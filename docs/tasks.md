@@ -17,23 +17,24 @@
 
 8. ✅ nginx pod spec serving `index.html` on port 8080 (unprivileged image), HTML from ConfigMap `claro-cenam-html`.
 9. ✅ Deployed to CCE cluster **`cce-dashboard`** (v1.35), region **la-north-2**, namespace **`claro-cenam`**.
-10. ✅ Exposed via existing `ingress-nginx` controller (public IP 46.250.173.157): host `claro-cenam.46-250-173-157.nip.io`.
-11. ✅ Public URL verified: **http://claro-cenam.46-250-173-157.nip.io/** — HTTP 200, contains "Claro CENAM"; the wrong clock is live.
+10. ✅ Exposed via dedicated **ELB** (autocreate, public IP **149.232.142.100**), port 80.
+11. ✅ Public URL verified: **http://149.232.142.100/** — HTTP 200, contains "Claro CENAM"; the wrong clock is live.
 12. ✅ GitHub issue created: **https://github.com/jarceg884/claro-cenam/issues/1** — "Fix: Clock shows wrong timezone (UTC+9 instead of Central America UTC-6)".
 
-Deploy manifests: `k8s/deployment.yaml`, `k8s/ingress.yaml` (namespace, deployment, service, ingress).
+Deploy manifests: `k8s/deployment-elb.yaml` (namespace, deployment, service with ELB autocreate).
 
 ## Live-demo runbook (during the session)
 
-> Prereq: page deployed and reachable at **http://claro-cenam.46-250-173-157.nip.io/**; issue #1 open. Do all steps before the audience joins.
-> Kubeconfig: `C:/Users/j84403562/Downloads/sandbox-cce-ha-kubeconfig.yaml` (context `external`). kubectl: `$TMPDIR/kubectl.exe`.
+> Prereq: page deployed and reachable at **http://149.232.142.100/**; issue #1 open. Do all steps before the audience joins.
+> Cluster: **cce-dashboard** (v1.35). Kubeconfig: `C:/Users/j84403562/Downloads/cce-dashboard-kubeconfig.yaml` (context `external`). kubectl: `$TMPDIR/kubectl.exe`.
 
-1. **Show the bug** — open **http://claro-cenam.46-250-173-157.nip.io/** in the browser; point out the clock is 15 hours ahead while labeled "Local Time — CENAM".
+1. **Show the bug** — open **http://149.232.142.100/** in the browser; point out the clock is 15 hours ahead while labeled "Local Time — CENAM".
 2. **Open the issue** — show https://github.com/jarceg884/claro-cenam/issues/1; read the description aloud.
-3. **Fix one line** — in `index.html` line 81, change `const TIMEZONE = 'Asia/Tokyo';` → `const TIMEZONE = 'America/Guatemala';`. Show the one-line diff.
+3. **Fix one line** — in `index.html`, change `const TIMEZONE = 'Asia/Tokyo';` → `const TIMEZONE = 'America/Guatemala';`. Show the one-line diff.
 4. **Commit & push** — `git commit -m "fix: use America/Guatemala timezone for CENAM clock (fixes #1)"` then `git push`.
 5. **Redeploy the pod** — update the ConfigMap and roll the pod:
    ```
+   export KUBECONFIG="C:/Users/j84403562/Downloads/cce-dashboard-kubeconfig.yaml"
    kubectl create configmap claro-cenam-html --from-file=index.html=index.html -n claro-cenam --dry-run=client -o yaml | kubectl apply -f -
    kubectl rollout restart deployment/claro-cenam -n claro-cenam
    kubectl rollout status deployment/claro-cenam -n claro-cenam
@@ -44,4 +45,4 @@ Deploy manifests: `k8s/deployment.yaml`, `k8s/ingress.yaml` (namespace, deployme
 ### Rollback / contingency
 
 - If the redeploy stalls: `kubectl rollout undo deployment/claro-cenam -n claro-cenam` and present the diff + local preview instead.
-- If the ingress is unreachable: present via `kubectl port-forward -n claro-cenam svc/claro-cenam 8080:80` and a local browser.
+- If the ELB is unreachable: present via `kubectl port-forward -n claro-cenam svc/claro-cenam 8080:80` and a local browser.
