@@ -13,27 +13,35 @@
 6. Confirm the fix will be a **one-line** timezone change (`Asia/Tokyo` → `America/Guatemala`) — no other edits needed.
 7. Confirm Claro branding renders correctly (red, logo, layout).
 
-## Deploy (CCE + exposure)
+## Deploy (CCE + exposure) — DONE 2026-09-30
 
-8. Build/prepare the nginx pod spec serving `index.html` on port 80.
-9. Deploy the pod to CCE cluster **`cce-dashboard`** (v1.35), region **la-north-2**.
-10. Create a `Service` of type `LoadBalancer` (ELB) exposing port 80; wait for the public IP.
-11. Verify the public URL: `curl -s http://<ELB-IP>/` returns 200 and contains "Claro CENAM"; the wrong clock is visible.
-12. Create GitHub issue **"fix the clock"** in `jarceg884/claro-cenam` describing: clock shows Asia/Tokyo (UTC+9) labeled as CENAM local time; expected fix = `America/Guatemala` (UTC−6); one-line change + redeploy.
+8. ✅ nginx pod spec serving `index.html` on port 8080 (unprivileged image), HTML from ConfigMap `claro-cenam-html`.
+9. ✅ Deployed to CCE cluster **`cce-dashboard`** (v1.35), region **la-north-2**, namespace **`claro-cenam`**.
+10. ✅ Exposed via existing `ingress-nginx` controller (public IP 46.250.173.157): host `claro-cenam.46-250-173-157.nip.io`.
+11. ✅ Public URL verified: **http://claro-cenam.46-250-173-157.nip.io/** — HTTP 200, contains "Claro CENAM"; the wrong clock is live.
+12. ✅ GitHub issue created: **https://github.com/jarceg884/claro-cenam/issues/1** — "Fix: Clock shows wrong timezone (UTC+9 instead of Central America UTC-6)".
+
+Deploy manifests: `k8s/deployment.yaml`, `k8s/ingress.yaml` (namespace, deployment, service, ingress).
 
 ## Live-demo runbook (during the session)
 
-> Prereq: page deployed and reachable at the ELB public URL; issue "fix the clock" open. Do all steps before the audience joins.
+> Prereq: page deployed and reachable at **http://claro-cenam.46-250-173-157.nip.io/**; issue #1 open. Do all steps before the audience joins.
+> Kubeconfig: `C:/Users/j84403562/Downloads/sandbox-cce-ha-kubeconfig.yaml` (context `external`). kubectl: `$TMPDIR/kubectl.exe`.
 
-1. **Show the bug** — open `http://<ELB-IP>/` in the browser; point out the clock is 15 hours ahead while labeled "CENAM Local Time".
-2. **Open the issue** — show GitHub issue "fix the clock"; read the description aloud.
-3. **Fix one line** — in the page source, change the timezone string `Asia/Tokyo` → `America/Guatemala`. Show the one-line diff.
-4. **Commit & push** — `git commit -m "fix: use America/Guatemala timezone for CENAM clock (fixes #N)"` then `git push`.
-5. **Redeploy the pod** — rolling update on CCE (e.g. `kubectl rollout restart deployment/<name>` or re-apply the pod spec with the updated page); wait for rollout to complete.
+1. **Show the bug** — open **http://claro-cenam.46-250-173-157.nip.io/** in the browser; point out the clock is 15 hours ahead while labeled "Local Time — CENAM".
+2. **Open the issue** — show https://github.com/jarceg884/claro-cenam/issues/1; read the description aloud.
+3. **Fix one line** — in `index.html` line 81, change `const TIMEZONE = 'Asia/Tokyo';` → `const TIMEZONE = 'America/Guatemala';`. Show the one-line diff.
+4. **Commit & push** — `git commit -m "fix: use America/Guatemala timezone for CENAM clock (fixes #1)"` then `git push`.
+5. **Redeploy the pod** — update the ConfigMap and roll the pod:
+   ```
+   kubectl create configmap claro-cenam-html --from-file=index.html=index.html -n claro-cenam --dry-run=client -o yaml | kubectl apply -f -
+   kubectl rollout restart deployment/claro-cenam -n claro-cenam
+   kubectl rollout status deployment/claro-cenam -n claro-cenam
+   ```
 6. **Verify** — hard-refresh the page; the clock now shows correct Guatemala time (UTC−6) matching local time.
-7. **Close the loop** — comment on / close the GitHub issue referencing the fix commit.
+7. **Close the loop** — the push with `(fixes #1)` auto-closes the issue; show it closed on GitHub.
 
 ### Rollback / contingency
 
-- If the redeploy stalls: `kubectl rollout undo deployment/<name>` and present the diff + local preview instead.
-- If the ELB is unreachable: present via `kubectl port-forward` and a local browser.
+- If the redeploy stalls: `kubectl rollout undo deployment/claro-cenam -n claro-cenam` and present the diff + local preview instead.
+- If the ingress is unreachable: present via `kubectl port-forward -n claro-cenam svc/claro-cenam 8080:80` and a local browser.
