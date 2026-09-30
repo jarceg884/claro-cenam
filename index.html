@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Claro CENAM — real-time local clock demo">
+<title>Claro CENAM</title>
+<style>
+  :root {
+    --claro-red: #DA291C;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b6b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #ffffff;
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--claro-red);
+    padding: 1.25rem 2rem;
+  }
+  .wordmark {
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: lowercase;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1.5rem;
+    text-align: center;
+  }
+  .label {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1.5rem;
+  }
+  #clock {
+    font-size: clamp(4rem, 14vw, 8.5rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+  #date {
+    margin-top: 1.25rem;
+    font-size: 1.375rem;
+    color: var(--text-secondary);
+  }
+  footer {
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+</style>
+</head>
+<body>
+<header><span class="wordmark">claro</span></header>
+<main>
+  <p class="label">Local Time — CENAM</p>
+  <div id="clock">--:--:--</div>
+  <div id="date">&nbsp;</div>
+</main>
+<footer>Powered by Claro CENAM Demo</footer>
+<script>
+  // Timezone used to render the CENAM regional clock.
+  const TIMEZONE = 'Asia/Tokyo';
+
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  });
+
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE,
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = timeFormatter.format(now);
+    document.getElementById('date').textContent = dateFormatter.format(now);
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
