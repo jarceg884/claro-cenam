@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claro-cenam
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claro-cenam
+  namespace: claro-cenam
+  labels:
+    app: claro-cenam
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: claro-cenam
+  template:
+    metadata:
+      labels:
+        app: claro-cenam
+    spec:
+      containers:
+        - name: web
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          configMap:
+            name: claro-cenam-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claro-cenam
+  namespace: claro-cenam
+  labels:
+    app: claro-cenam
+  annotations:
+    kubernetes.io/elb.autocreate: |
+      {
+        "type": "public",
+        "eip_type": "5_bgp",
+        "bandwidth_name": "claro-cenam-bw",
+        "bandwidth_size": 5,
+        "bandwidth_sharetype": "PER",
+        "listener": {
+          "loadbalancer_protocol": "TCP",
+          "protocol": "TCP",
+          "port": 80
+        }
+      }
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: claro-cenam
